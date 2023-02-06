@@ -12,7 +12,7 @@ def find_independent_vertex(current_node,guest_list_dict, vertex_set, prev_seen)
     for i in current_node.avoid:
         prev_seen.add(i)
         for guest in guest_list_dict[i].avoid:
-            vertex_set = find_independent_vertex(guest_list_dict[i]m guest_list_dict, vertex_set, prev_seen)
+            vertex_set = find_independent_vertex(guest_list_dict[i], guest_list_dict, vertex_set, prev_seen)
     return vertex_set
     
 def legislator(num_tables, guest_list, planner_preferences):
