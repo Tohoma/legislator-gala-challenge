@@ -4,84 +4,72 @@ class GuestNode:
         self.avoid = avoid
         self.pair = pair
         self.added = False
+        self.seen = False
 
-def find_independent_vertex(current_node,guest_list_dict, vertex_set, prev_seen):
-    vertex_set.add(current_node.name)
-    current_node.added = True
-    print(current_node.name)
-    if len(current_node.avoid) == 0:
-        return vertex_set
-    for i in current_node.avoid:
-        #current_node.avoid is ['C','D']
-        # print("My options are ")
-        # print(guest_list_dict[i].avoid)
-        for guest in guest_list_dict[i].avoid:
-            print("Checking if " + guest + " is an option ")
-            print("Is " + guest + " not in vertex_set?")
-            print(guest not in vertex_set)
-            print("Does" + guest + " not have any edges touching previous vertexes?")
-            print( not any(vertex in vertex_set for vertex in guest_list_dict[guest].avoid))
-            if guest not in vertex_set and not any(vertex in vertex_set for vertex in guest_list_dict[guest].avoid) and not guest_list_dict[guest].added:
-                print(guest + " is an independent vertex!")
-                # print("I'm going to explore" + guest_list_dict[guest].name)
-                vertex_set.update(find_independent_vertex(guest_list_dict[guest], guest_list_dict, vertex_set,prev_seen))
-        # print("The vertex set is: ")
-        # print(vertex_set)
-        return vertex_set
-    
-    
+def find_all_ind_vertex(current_vertex, visited_vertexes, graph_dict):
+    result = []
+    combined_avoid = []
+    new_visited_vertexes = [current_vertex]+ visited_vertexes
+    for v in new_visited_vertexes:
+        combined_avoid.extend(graph_dict[v].avoid)
+    possible_ind_vertex = list(filter(lambda g: g not in combined_avoid, graph_dict.keys()))
+    possible_ind_vertex = list(filter(lambda g: g not in new_visited_vertexes, possible_ind_vertex))
+    #base case
+    if len(possible_ind_vertex) == 0:
+        return [[current_vertex]]
+    for  v in possible_ind_vertex:
+        sub_verticies = find_all_ind_vertex(v, new_visited_vertexes, graph_dict)
+        for vList in sub_verticies:
+            new_vList = [current_vertex] + vList 
+            result.append(new_vList)
+    return result
+
 def legislator(num_tables, guest_list, planner_preferences):
     solution_table = {}
-    guest_list_graphs = {}
     for i in range(num_tables):
         table_name = "table_" + str(i + 1)
         solution_table[table_name] = []
-    #Build guest list graph
-    for i in planner_preferences:
-        #print(i)
-        if i["guests"][0] in guest_list_graphs.keys():
-            if i["preference"] == "avoid":
-                guest_list_graphs[i["guests"][0]].avoid.append(i["guests"][1])
-            elif i["preference"] == "pair":
-                guest_list_graphs[i["guests"][0]].pair.append(i["guests"][1])
-            else: 
-                raise Exception("Non supported preference input")
-        else:
-            if i["preference"] == "avoid":
-                guest_list_graphs[i["guests"][0]] = GuestNode(i["guests"][0],[i["guests"][1]],[])
-            elif i["preference"] == "pair":
-                guest_list_graphs[i["guests"][0]] = GuestNode(i["guests"][0],[],[i["guests"][1]])
-        if i["guests"][1] in guest_list_graphs.keys():
-            if i["preference"] == "avoid":
-                guest_list_graphs[i["guests"][1]].avoid.append(i["guests"][0])
-            elif i["preference"] == "pair":
-                guest_list_graphs[i["guests"][1]].pair.append(i["guests"][0])
-            else: 
-                raise Exception("Non supported preference input")
-        else:
-            if i["preference"] == "avoid":
-                guest_list_graphs[i["guests"][1]] = GuestNode(i["guests"][1],[i["guests"][0]],[])
-            elif i["preference"] == "pair":
-                guest_list_graphs[i["guests"][1]] = GuestNode(i["guests"][1],[],[i["guests"][0]])
-    #TODO: Find single node without avoid
-    #Find independent vertex
-    independent_vertex_set_list = []
-    for key in guest_list_graphs:
-        independent_vertex_set_list_size = len(independent_vertex_set_list)
-        if  independent_vertex_set_list_size == 0 or key not in independent_vertex_set_list[independent_vertex_set_list_size - 1]:
-            print('--------------------------------')
-            print('Finding ind vertex for ' +guest_list_graphs[key].name )
-            current_vertex_set = find_independent_vertex(guest_list_graphs[key], guest_list_graphs,set(),set())
-            print("The current vertex set is: ")
-            print(current_vertex_set)
-            independent_vertex_set_list.append(current_vertex_set)
-    print(independent_vertex_set_list)
-    if len(independent_vertex_set_list) > num_tables:
-        raise Exception("We need more tables, there are too many guests to sit that needs to be avoided")
-    elif len(independent_vertex_set_list) == num_tables:
-        for i in range(num_tables):
-           table_name = "table_" + str(i + 1)
-           solution_table[table_name] = list(independent_vertex_set_list[i]) 
-           
+    #Create Graph
+    graph_dict= {}
+    for name in guest_list:
+        graph_dict[name] = GuestNode(name, [],[])
+    for plan in planner_preferences:
+        if plan["preference"] == "avoid":
+             name1 = plan["guests"][0]
+             name2 = plan["guests"][1]
+             graph_dict[name1].avoid.append(name2)
+             graph_dict[name2].avoid.append(name1)
+        if plan["preference"] == "pair":
+            name1 = plan["guests"][0]
+            name2 = plan["guests"][1]
+            graph_dict[name1].pair.append(name2)
+            graph_dict[name2].pair.append(name1)
+    
+    #Find all possible independent vertexes for each vertex in graph
+    seen_vertex = set()
+    table_counter = 0
+    for vertex in graph_dict:
+        if vertex in seen_vertex:
+            continue
+        table_counter = table_counter + 1
+        if table_counter > num_tables:
+            raise Exception("We need more tables, there are too many guests to sit that needs to be avoided")
+        possible_ind_vertex = []
+        processed_graph_dict = {key: val for key,
+        val in graph_dict.items() if key not in seen_vertex}
+        unfiltered_possible_vertex = find_all_ind_vertex(vertex,[], processed_graph_dict)
+        #remove duplicate set
+        for uList in unfiltered_possible_vertex:
+            if set(uList) not in possible_ind_vertex:
+                possible_ind_vertex.append(set(uList))
+        #find largetst set size
+        largest_set = set()
+        for vertex_set in possible_ind_vertex:
+            if len(vertex_set) > len(largest_set):
+                largest_set = vertex_set
+        seen_vertex.update(largest_set)
+        solution_table["table_" + str(table_counter)] = list(largest_set)
     return solution_table
 
+if __name__ == "__main__":
+    
