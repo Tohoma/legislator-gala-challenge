@@ -1,3 +1,5 @@
+import sys
+
 class GuestNode:
     def __init__ (self, name, avoid, pair):
         self.name = name
@@ -72,4 +74,9 @@ def legislator(num_tables, guest_list, planner_preferences):
     return solution_table
 
 if __name__ == "__main__":
-    
+    num_tables = sys.argv[0]
+    guest_list = sys.argv[1]
+    planner_preferences = sys.argv[2]
+    with open("output.json", "w") as f:
+        output = legislator(num_tables, guest_list, planner_preferences)
+        json.dump(output, f, indent=2)

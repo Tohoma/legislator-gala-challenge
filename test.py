@@ -1,4 +1,4 @@
-from legislator2 import *
+from legislator import *
 
 num_tables1 = 3
 guest_list1 = ["A", "B", "C", "D"]
